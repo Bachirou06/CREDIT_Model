@@ -14,9 +14,13 @@ The model produces a ~1 km grid of residential demand targets for the whole coun
 |:---:|:---:|
 | ![DRC AHP index](images/DRC_AHP_index.png) | ![DRC CREDIT result](images/DRC_CREDIT_result.png) |
 
-- **Highest targets** are around **Kinshasa** (up to ~590 kWh/capita/year, MTF Tier 5).
-- **Mid-range targets** (~150–300 kWh/capita/year) appear in Kongo Central, the eastern provinces and the south-eastern mining belt.
-- **Lowest targets** (Tier 1–2, below ~150 kWh/capita/year) cover most of the centre and west, where poverty headcounts are highest.
+- **Highest targets** are around **Kinshasa**: ~300 kWh/capita/year on average, up to ~590 kWh/capita/year (MTF Tier 5) in the city centre.
+- **Mid-range targets** (~150–300 kWh/capita/year) appear in Kongo Central and the south-eastern mining belt (Haut-Katanga). Both provinces average ~140–146 kWh/capita/year.
+- **The east** (Ituri, Nord-Kivu, Sud-Kivu, Haut-Uele and Bas-Uele) sits at ~65–80 kWh/capita/year.
+- **Lowest targets** (below ~10 kWh/capita/year) are in the poorest provinces: Kwilu, Kwango, Kasaï, Kasaï-Central, Sankuru, Maniema, Mongala, Tshuapa and Nord-Ubangi.
+- About **87 %** of populated pixels are below 153 kWh/capita/year (MTF Tier 1–2). The national mean is ~66 kWh/capita/year.
+
+> These results use the PCode join between the poverty table and the HDX boundaries. Earlier versions had no poverty data for Haut-Uele, Bas-Uele, Nord-Kivu, Sud-Kivu and Kasaï-Central (English and French province names did not match). Those provinces were treated as the least poor, which put their targets at ~140–150 kWh/capita/year.
 
 Output files (written to `sample_output/<ISO3>/`, e.g. `sample_output/COD/`, not tracked in git; each country gets its own folder, so running another country does not overwrite these):
 
