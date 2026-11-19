@@ -513,10 +513,16 @@ _VARIANT_FILES = {
 
 def download_file(url: str, out_dir: str, filename: str = None,
                   chunk_size: int = 1 << 20, overwrite: bool = False) -> str:
-    """Stream-download a (large) file; skip if already on disk. Returns the local path."""
+    """Stream-download a (large) file; skip if already on disk. Returns the local path.
+
+    The data is written to '<file>.part' and only renamed to the final name once the
+    full size has arrived, so an interrupted download is never mistaken for a complete
+    file (it is simply downloaded again on the next run).
+    """
     if filename is None:
         filename = url.split("/")[-1].split("?")[0]
     out_path = os.path.join(out_dir, filename)
+    part_path = out_path + ".part"
 
     if os.path.exists(out_path) and not overwrite:
         print(f"Already exists, skipping download: {out_path}")
@@ -526,9 +532,11 @@ def download_file(url: str, out_dir: str, filename: str = None,
     print(f"Downloading {url}\n  -> {out_path}")
     with requests.get(url, stream=True, timeout=60) as r:
         r.raise_for_status()
-        total = int(r.headers.get("content-length", 0))
+        # content-length is the compressed size when the server gzips the response,
+        # so the size check is only possible for uncompressed downloads (e.g. Zenodo .tif)
+        total = 0 if r.headers.get("content-encoding") else int(r.headers.get("content-length", 0))
         downloaded = 0
-        with open(out_path, "wb") as f:
+        with open(part_path, "wb") as f:
             for chunk in r.iter_content(chunk_size=chunk_size):
                 if not chunk:
                     continue
@@ -537,6 +545,10 @@ def download_file(url: str, out_dir: str, filename: str = None,
                 if total:
                     print(f"\r  {downloaded/1e6:,.0f} MB / {total/1e6:,.0f} MB "
                           f"({downloaded / total * 100:5.1f}%)", end="", flush=True)
+    if total and downloaded != total:
+        raise IOError(f"Download incomplete ({downloaded:,} of {total:,} bytes). "
+                      f"Run the cell again to restart the download.")
+    os.replace(part_path, out_path)
     print("\nDownload complete.")
     return out_path
 
