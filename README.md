@@ -1,14 +1,14 @@
-# CREDIT layer — Democratic Republic of the Congo (DRC)
+# CREDIT Model — residential electricity demand targets for any country
 
 **CREDIT** (Custom Residential Electricity Demand Indicative Target) is a spatially explicit way of assigning residential electricity demand targets to un-electrified settlements. It combines **poverty** and **GDP** maps instead of the usual urban/rural tier split. The method is described in [Korkovelos et al. (2019), *Energies* 12(7):1395](https://www.mdpi.com/1996-1073/12/7/1395).
 
-This repository adapts the [Global Electrification Platform CREDIT_layer](https://github.com/global-electrification-platform/CREDIT_layer) to the **DRC (ISO3: COD)** using 2024 data.
+This repository is an updated version of the [Global Electrification Platform CREDIT_layer](https://github.com/global-electrification-platform/CREDIT_layer). It runs for **any country**: set the country in one *Settings* cell and the notebook downloads the poverty, boundary and GDP data itself (2024 data by default). The **Democratic Republic of the Congo (DRC, ISO3: COD)** is used as the worked example below.
 
 ---
 
-## Results
+## Example results: DRC
 
-The model produces a ~1 km grid of residential demand targets for the whole country.
+The model produces a ~1 km grid of residential demand targets for the whole country. The maps and figures below are for the DRC.
 
 | Step 3 — Combined poverty/GDP index (1–5) | Step 4 — CREDIT demand target (kWh/capita/year) |
 |:---:|:---:|
@@ -26,8 +26,8 @@ Output files (written to `sample_output/<ISO3>/`, e.g. `sample_output/COD/`, not
 
 | File | Description |
 |---|---|
-| `CREDIT.tif` | Final CREDIT layer, kWh/capita/year, 1 km, EPSG:32734 |
-| `AHP_option_1.tif` / `clipped_sum_.tif` | Combined 1–5 index (raster option), clipped to DRC |
+| `CREDIT.tif` | Final CREDIT layer, kWh/capita/year, 1 km, in the country's UTM zone (EPSG:32734 for DRC) |
+| `AHP_option_1.tif` / `clipped_sum_.tif` | Combined 1–5 index (raster option), clipped to the country |
 
 ---
 
@@ -36,8 +36,8 @@ Output files (written to `sample_output/<ISO3>/`, e.g. `sample_output/COD/`, not
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Bachirou06/Credit_DRC.git
-cd Credit_DRC
+git clone https://github.com/Bachirou06/CREDIT_Model.git
+cd CREDIT_Model
 ```
 
 ### 2. Create the Python environment
@@ -61,9 +61,9 @@ Run the cells from top to bottom. The notebook downloads its own input data the 
 
 | Input | Source | Downloaded to |
 |---|---|---|
-| Poverty (MPI headcount ratio, 26 provinces) | OPHI MPI via [HDX](https://data.humdata.org/) | `poverty_data/tabular/` |
-| Province boundaries (ADM1) | [HDX COD-AB](https://data.humdata.org/dataset/cod-ab-cod) (same PCodes as the poverty table); [geoBoundaries](https://www.geoboundaries.org/) as fallback | `admin/` |
-| GDP PPP 2024, 30 arc-sec (~1.4 GB) | [Kummu et al. v4](https://zenodo.org/records/18429133) | `GDP_data/` |
+| Poverty (MPI headcount ratio, ADM1; 26 provinces for DRC) | OPHI MPI via [HDX](https://data.humdata.org/) | `poverty_data/tabular/` |
+| Admin boundaries (ADM1) | [HDX COD-AB](https://data.humdata.org/dataset/?q=cod-ab) (same PCodes as the poverty table); [geoBoundaries](https://www.geoboundaries.org/) as fallback | `admin/` |
+| GDP PPP (2024 by default), 30 arc-sec (~1.4 GB global file) | [Kummu et al. v4](https://zenodo.org/records/18429133) | `GDP_data/` |
 
 Files that already exist are not downloaded again. The full run takes a while the first time, mainly because of the GDP download.
 
@@ -95,7 +95,7 @@ Step 3 keeps both ways of combining the layers: **Option 1** works directly on r
 The repository holds only the code. The data and result folders are created by the notebook on the first run and are not tracked in git. Files that belong to a country carry its ISO3 code or label (`COD`/`cod`/`DRC` below), so several countries can live side by side.
 
 ```
-Credit_DRC/
+CREDIT_Model/
 │
 ├── CREDIT_layer.ipynb        Main workflow: settings → data → reclassification → index → CREDIT layer
 ├── credit_utils.py           All helper functions (data downloads, raster processing, Step 3 options, CREDIT)
@@ -139,7 +139,7 @@ Running another country adds its own files next to these (for example `admin/NER
 
 ## Method
 
-**Step 1 — Collect data.** Province-level poverty (MPI headcount ratio) is joined to the ADM1 boundaries and rasterised at 1 km. GDP PPP 2024 is clipped to the DRC.
+**Step 1 — Collect data.** ADM1-level poverty (MPI headcount ratio) is joined to the ADM1 boundaries and rasterised at 1 km. GDP PPP for the chosen year is clipped to the country.
 
 **Step 2 — Reclassify both layers to a 1–5 scale.**
 
@@ -159,9 +159,9 @@ The choice of classification method affects the result, so check that it suits y
 index = 0.5 × poverty_class + 0.5 × GDP_class
 ```
 
-**Step 4 — Convert the index to a demand target** by linear interpolation between MTF-based minimum and maximum values, scaled for the DRC's average household size.
+**Step 4 — Convert the index to a demand target** by linear interpolation between MTF-based minimum and maximum values, scaled for the country's average household size.
 
-### DRC-specific settings
+### Example settings: DRC
 
 | Parameter | Value |
 |---|---|
@@ -175,12 +175,12 @@ index = 0.5 × poverty_class + 0.5 × GDP_class
 
 ---
 
-> **Note.** CREDIT does not *predict* electricity demand; it is not a regression model. It is an improved way to distribute tier-based demand targets in space using available geospatial data. The MTF demand values above are scaled estimates and should be checked against national DRC calibration data before they are used for planning.
+> **Note.** CREDIT does not *predict* electricity demand; it is not a regression model. It is an improved way to distribute tier-based demand targets in space using available geospatial data. The MTF demand values are scaled estimates and should be checked against national calibration data for each country before they are used for planning.
 
 ## Credits and license
 
 - **Original method and code:** [Alexandros Korkovelos](https://github.com/akorkovelos), [Global Electrification Platform](https://github.com/global-electrification-platform/CREDIT_layer)
-- **DRC adaptation:** [Djibo Boubé Bachirou](https://github.com/Bachirou06)
-- **Data:** OPHI (MPI), geoBoundaries, Kummu et al. (2025) GDP v4
+- **Updates, modifications and adaptation to any country (DRC example):** [DJIBO BOUBE Bachirou](https://github.com/Bachirou06)
+- **Data:** OPHI (MPI), HDX COD-AB, geoBoundaries, Kummu et al. (2025) GDP v4
 
 Released under the [MIT License](LICENSE).
