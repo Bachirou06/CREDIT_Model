@@ -63,6 +63,8 @@ Run the cells from top to bottom. The notebook downloads its own input data the 
 
 Files that already exist are not downloaded again. The full run takes a while the first time, mainly because of the GDP download.
 
+**GDP download.** The Kummu v4 data is only published as one global file (1.4 GB), and Zenodo does not allow downloading part of a file, so it has to be downloaded once. After that, only the country's clipped raster is needed (`GDP_data/GDP_<year>_<iso3>_clipped.tif`, ~20 MB for DRC): if it exists, the notebook reuses it and does not need the global file at all. Set `KEEP_GLOBAL_GDP = False` to delete the global file automatically after clipping.
+
 ### 4. Run it for another country
 
 All country-specific values are in the **Settings** cell at the top of the notebook:
@@ -71,6 +73,7 @@ All country-specific values are in the **Settings** cell at the top of the noteb
 |---|---|---|
 | `COUNTRY_ISO3`, `COUNTRY_NAME`, `COUNTRY_LABEL` | `COD`, `Congo, Democratic Republic of the`, `DRC` | The country to model |
 | `YEAR` | `2024` | GDP year (Kummu v4: 1990, 1995, …, 2020, 2024) |
+| `KEEP_GLOBAL_GDP` | `True` | `False` deletes the 1.4 GB global GDP raster once the country is clipped (it is downloaded again if you run another country or year) |
 | `ADMIN_SOURCE` | `auto` | `auto` = HDX COD-AB boundaries, geoBoundaries if the country has none; or force `hdx` / `geoboundaries` |
 | `POVERTY_CODE_COL`, `POVERTY_NAME_COL`, `POVERTY_VALUE_COL` | `Admin 1 PCode`, `Admin 1 Name`, `Headcount Ratio` | Column names of the HDX/OPHI poverty table |
 | `NAME_ALIASES` | `{}` | Optional manual matches `{boundary name: poverty-table name}` |

@@ -626,6 +626,34 @@ def extract_country_gdp(country: str, year: int, gdp_path: str, out_path: str = 
     return da_clipped
 
 
+def get_country_gdp(country: str, year: int, gdp_path: str, out_path: str,
+                    keep_global: bool = True,
+                    global_file: str = "rast_gdpTot_1990_2024_30arcsec.tif"):
+    """Return the country's GDP raster for `year`, doing as little work as possible.
+
+    - If out_path already exists, it is loaded and nothing is downloaded.
+    - Otherwise the global Kummu v4 raster (1.4 GB) is downloaded if missing,
+      the country is clipped out and saved to out_path.
+    - keep_global=False deletes the global raster after clipping, keeping only the
+      country file. Keep it (True) if you will run other countries or years,
+      or it will have to be downloaded again.
+    """
+    global_path = os.path.join(gdp_path, global_file)
+
+    if os.path.exists(out_path):
+        print(f"[SKIP] Country GDP raster already exists, no download needed: {out_path}")
+        da = rioxarray.open_rasterio(out_path, masked=True).squeeze("band", drop=True)
+    else:
+        download_file(url=KUMMU_V4_FILES[global_file], out_dir=gdp_path)
+        da = extract_country_gdp(country, year, gdp_path=gdp_path, out_path=out_path,
+                                 tif_path=global_path)
+
+    if not keep_global and os.path.exists(global_path):
+        os.remove(global_path)
+        print(f"[OK] Deleted the global GDP raster to free 1.4 GB: {global_path}")
+    return da
+
+
 # =============================================================================
 # 4. Raster helpers
 # =============================================================================
