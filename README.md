@@ -18,7 +18,7 @@ The model produces a ~1 km grid of residential demand targets for the whole coun
 - **Mid-range targets** (~150–300 kWh/capita/year) appear in Kongo Central, the eastern provinces and the south-eastern mining belt.
 - **Lowest targets** (Tier 1–2, below ~150 kWh/capita/year) cover most of the centre and west, where poverty headcounts are highest.
 
-Output files (written to `sample_output/`, not tracked in git):
+Output files (written to `sample_output/<ISO3>/`, e.g. `sample_output/COD/`, not tracked in git; each country gets its own folder, so running another country does not overwrite these):
 
 | File | Description |
 |---|---|
