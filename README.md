@@ -14,11 +14,15 @@ The model produces a ~1 km grid of residential demand targets for the whole coun
 |:---:|:---:|
 | ![DRC AHP index](images/DRC_AHP_index.png) | ![DRC CREDIT result](images/DRC_CREDIT_result.png) |
 
-- **Highest targets** are around **Kinshasa** (up to ~590 kWh/capita/year, MTF Tier 5).
-- **Mid-range targets** (~150–300 kWh/capita/year) appear in Kongo Central, the eastern provinces and the south-eastern mining belt.
-- **Lowest targets** (Tier 1–2, below ~150 kWh/capita/year) cover most of the centre and west, where poverty headcounts are highest.
+- **Highest targets** are around **Kinshasa**: ~300 kWh/capita/year on average, up to ~590 kWh/capita/year (MTF Tier 5) in the city centre.
+- **Mid-range targets** (~150–300 kWh/capita/year) appear in Kongo Central and the south-eastern mining belt (Haut-Katanga). Both provinces average ~140–146 kWh/capita/year.
+- **The east** (Ituri, Nord-Kivu, Sud-Kivu, Haut-Uele and Bas-Uele) sits at ~65–80 kWh/capita/year.
+- **Lowest targets** (below ~10 kWh/capita/year) are in the poorest provinces: Kwilu, Kwango, Kasaï, Kasaï-Central, Sankuru, Maniema, Mongala, Tshuapa and Nord-Ubangi.
+- About **87 %** of populated pixels are below 153 kWh/capita/year (MTF Tier 1–2). The national mean is ~66 kWh/capita/year.
 
-Output files (written to `sample_output/`, not tracked in git):
+> These results use the PCode join between the poverty table and the HDX boundaries. Earlier versions had no poverty data for Haut-Uele, Bas-Uele, Nord-Kivu, Sud-Kivu and Kasaï-Central (English and French province names did not match). Those provinces were treated as the least poor, which put their targets at ~140–150 kWh/capita/year.
+
+Output files (written to `sample_output/<ISO3>/`, e.g. `sample_output/COD/`, not tracked in git; each country gets its own folder, so running another country does not overwrite these):
 
 | File | Description |
 |---|---|
@@ -50,7 +54,7 @@ conda activate credit_env
 ### 3. Run the main notebook
 
 ```bash
-jupyter lab CREDIT_layer_DRC.ipynb
+jupyter lab CREDIT_layer.ipynb
 ```
 
 Run the cells from top to bottom. The notebook downloads its own input data the first time:
@@ -58,27 +62,78 @@ Run the cells from top to bottom. The notebook downloads its own input data the 
 | Input | Source | Downloaded to |
 |---|---|---|
 | Poverty (MPI headcount ratio, 26 provinces) | OPHI MPI via [HDX](https://data.humdata.org/) | `poverty_data/tabular/` |
-| Province boundaries (ADM1) | [geoBoundaries](https://www.geoboundaries.org/) API | `admin/` |
+| Province boundaries (ADM1) | [HDX COD-AB](https://data.humdata.org/dataset/cod-ab-cod) (same PCodes as the poverty table); [geoBoundaries](https://www.geoboundaries.org/) as fallback | `admin/` |
 | GDP PPP 2024, 30 arc-sec (~1.4 GB) | [Kummu et al. v4](https://zenodo.org/records/18429133) | `GDP_data/` |
 
 Files that already exist are not downloaded again. The full run takes a while the first time, mainly because of the GDP download.
 
-### 4. Optional helper notebooks
+**GDP download.** The Kummu v4 data is only published as one global file (1.4 GB), and Zenodo does not allow downloading part of a file, so it has to be downloaded once. After that, only the country's clipped raster is needed (`GDP_data/GDP_<year>_<iso3>_clipped.tif`, ~20 MB for DRC): if it exists, the notebook reuses it and does not need the global file at all. Set `KEEP_GLOBAL_GDP = False` to delete the global file automatically after clipping.
 
-| Notebook | Use it to |
-|---|---|
-| `Extraction_GDP_PPP.ipynb` | Download the Kummu v4 raster and extract only the DRC 2024 GDP layer |
-| `conversion.ipynb` | Compare the two GDP extraction methods (windowed and general) |
+### 4. Run it for another country
 
-### Repository contents
+All country-specific values are in the **Settings** cell at the top of the notebook:
 
-| File | Purpose |
-|---|---|
-| `CREDIT_layer_DRC.ipynb` | Main workflow: data → reclassification → index → CREDIT layer |
-| `extract_poverty.py` | Downloads the OPHI MPI poverty table and admin boundaries from HDX |
-| `extract_gdp.py` | Extracts and clips a country's GDP raster (boundary from geoBoundaries) |
-| `preprocess_kummu_gdp.py` | Downloads and pre-processes the Kummu v4 GDP dataset |
-| `credit_env.yml`, `requirements.txt` | Python environment |
+| Setting | DRC value | What to change |
+|---|---|---|
+| `COUNTRY_ISO3`, `COUNTRY_NAME`, `COUNTRY_LABEL` | `COD`, `Congo, Democratic Republic of the`, `DRC` | The country to model |
+| `YEAR` | `2024` | GDP year (Kummu v4: 1990, 1995, …, 2020, 2024) |
+| `KEEP_GLOBAL_GDP` | `True` | `False` deletes the 1.4 GB global GDP raster once the country is clipped (it is downloaded again if you run another country or year) |
+| `ADMIN_SOURCE` | `auto` | `auto` = HDX COD-AB boundaries, geoBoundaries if the country has none; or force `hdx` / `geoboundaries` |
+| `POVERTY_CODE_COL`, `POVERTY_NAME_COL`, `POVERTY_VALUE_COL` | `Admin 1 PCode`, `Admin 1 Name`, `Headcount Ratio` | Column names of the HDX/OPHI poverty table |
+| `NAME_ALIASES` | `{}` | Optional manual matches `{boundary name: poverty-table name}` |
+| `PROJECTED_CRS` | `None` (auto → EPSG:32734) | Leave `None` for the country's UTM zone, or set an EPSG code |
+| `WEIGHT_POV`, `WEIGHT_GDP` | `0.5`, `0.5` | Layer weights (sum = 1) |
+| `RANDOM_SEED` | `0` | Makes the GDP natural-breaks classes identical from run to run |
+| `MTF_KWH_PER_CAPITA` | `[1, 7.6, 153.3, 299.0, 444.7, 590.4]` | Demand targets for index 0–5, adjusted to the country's household size |
+
+**How poverty is joined to the boundaries.** Each admin unit is matched to the poverty table in this order: (1) by **PCode**, when the official HDX COD-AB boundaries are available, (2) by `NAME_ALIASES`, (3) by name, ignoring accents, case and hyphens, (4) by the closest similar name (fuzzy). Step 1.1.a prints how each unit was matched, lists fuzzy matches to check, and warns about any unit left without poverty data.
+
+Step 3 keeps both ways of combining the layers: **Option 1** works directly on raster arrays (`AHP_option_1.tif`, `clipped_sum_.tif`), and **Option 2** works on points / CSV and produces the final `CREDIT.tif`.
+
+### Folder structure
+
+The repository holds only the code. The data and result folders are created by the notebook on the first run and are not tracked in git. Files that belong to a country carry its ISO3 code or label (`COD`/`cod`/`DRC` below), so several countries can live side by side.
+
+```
+Credit_DRC/
+│
+├── CREDIT_layer.ipynb        Main workflow: settings → data → reclassification → index → CREDIT layer
+├── credit_utils.py           All helper functions (data downloads, raster processing, Step 3 options, CREDIT)
+├── README.md
+├── LICENSE
+├── credit_env.yml            Conda environment (recommended)
+├── requirements.txt          Exact package versions of the tested run (Python 3.12)
+├── images/                   Result maps shown in this README
+│
+│   ── created by the notebook (not in git) ──────────────────────────────
+│
+├── admin/                    Admin boundaries
+│   ├── COD_cod_admin_boundaries.shp.zip     HDX COD-AB download (all admin levels)
+│   ├── COD_cod_admin_boundaries/            unzipped; cod_admin1.shp is used
+│   └── COD_geoBoundaries_ADM1.shp           only if the geoBoundaries fallback was used
+│
+├── poverty_data/
+│   ├── tabular/              OPHI MPI table from HDX + cleaned copy (cod_poverty_data.csv)
+│   ├── shapefile/            Poverty joined to the admin units (DRC_admin1.shp)
+│   └── raster/               Rasterised poverty map (DRC_poverty_map.tif, ..._in_CRS.tif)
+│
+├── GDP_data/
+│   ├── rast_gdpTot_1990_2024_30arcsec.tif   Global Kummu v4 raster (1.4 GB; optional after clipping)
+│   └── GDP_2024_cod_clipped.tif             Country GDP for the chosen year (~20 MB)
+│
+├── tmp/
+│   └── COD/                  Intermediate files: pixel points, classified rasters, Option 2 CSVs
+│
+└── sample_output/
+    └── COD/                  Results for one country
+        ├── CREDIT.tif                      Final CREDIT layer (kWh/capita/year)
+        ├── AHP_option_1.tif                Combined index, Step 3 Option 1
+        ├── clipped_sum_.tif                Option 1 index clipped to the country
+        ├── AHP_result_option2.png          Map of the Option 2 index
+        └── Sample_result.png               Map of the CREDIT layer
+```
+
+Running another country adds its own files next to these (for example `admin/NER_...`, `GDP_data/GDP_2024_ner_clipped.tif`, `tmp/NER/`, `sample_output/NER/`) without touching the DRC ones.
 
 ---
 
