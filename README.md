@@ -50,7 +50,7 @@ conda activate credit_env
 ### 3. Run the main notebook
 
 ```bash
-jupyter lab CREDIT_layer_DRC.ipynb
+jupyter lab CREDIT_layer.ipynb
 ```
 
 Run the cells from top to bottom. The notebook downloads its own input data the first time:
@@ -58,26 +58,37 @@ Run the cells from top to bottom. The notebook downloads its own input data the 
 | Input | Source | Downloaded to |
 |---|---|---|
 | Poverty (MPI headcount ratio, 26 provinces) | OPHI MPI via [HDX](https://data.humdata.org/) | `poverty_data/tabular/` |
-| Province boundaries (ADM1) | [geoBoundaries](https://www.geoboundaries.org/) API | `admin/` |
+| Province boundaries (ADM1) | [HDX COD-AB](https://data.humdata.org/dataset/cod-ab-cod) (same PCodes as the poverty table); [geoBoundaries](https://www.geoboundaries.org/) as fallback | `admin/` |
 | GDP PPP 2024, 30 arc-sec (~1.4 GB) | [Kummu et al. v4](https://zenodo.org/records/18429133) | `GDP_data/` |
 
 Files that already exist are not downloaded again. The full run takes a while the first time, mainly because of the GDP download.
 
-### 4. Optional helper notebooks
+### 4. Run it for another country
 
-| Notebook | Use it to |
-|---|---|
-| `Extraction_GDP_PPP.ipynb` | Download the Kummu v4 raster and extract only the DRC 2024 GDP layer |
-| `conversion.ipynb` | Compare the two GDP extraction methods (windowed and general) |
+All country-specific values are in the **Settings** cell at the top of the notebook:
+
+| Setting | DRC value | What to change |
+|---|---|---|
+| `COUNTRY_ISO3`, `COUNTRY_NAME`, `COUNTRY_LABEL` | `COD`, `Congo, Democratic Republic of the`, `DRC` | The country to model |
+| `YEAR` | `2024` | GDP year (Kummu v4: 1990, 1995, …, 2020, 2024) |
+| `ADMIN_SOURCE` | `auto` | `auto` = HDX COD-AB boundaries, geoBoundaries if the country has none; or force `hdx` / `geoboundaries` |
+| `POVERTY_CODE_COL`, `POVERTY_NAME_COL`, `POVERTY_VALUE_COL` | `Admin 1 PCode`, `Admin 1 Name`, `Headcount Ratio` | Column names of the HDX/OPHI poverty table |
+| `NAME_ALIASES` | `{}` | Optional manual matches `{boundary name: poverty-table name}` |
+| `PROJECTED_CRS` | `None` (auto → EPSG:32734) | Leave `None` for the country's UTM zone, or set an EPSG code |
+| `WEIGHT_POV`, `WEIGHT_GDP` | `0.5`, `0.5` | Layer weights (sum = 1) |
+| `RANDOM_SEED` | `0` | Makes the GDP natural-breaks classes identical from run to run |
+| `MTF_KWH_PER_CAPITA` | `[1, 7.6, 153.3, 299.0, 444.7, 590.4]` | Demand targets for index 0–5, adjusted to the country's household size |
+
+**How poverty is joined to the boundaries.** Each admin unit is matched to the poverty table in this order: (1) by **PCode**, when the official HDX COD-AB boundaries are available, (2) by `NAME_ALIASES`, (3) by name, ignoring accents, case and hyphens, (4) by the closest similar name (fuzzy). Step 1.1.a prints how each unit was matched, lists fuzzy matches to check, and warns about any unit left without poverty data.
+
+Step 3 keeps both ways of combining the layers: **Option 1** works directly on raster arrays (`AHP_option_1.tif`, `clipped_sum_.tif`), and **Option 2** works on points / CSV and produces the final `CREDIT.tif`.
 
 ### Repository contents
 
 | File | Purpose |
 |---|---|
-| `CREDIT_layer_DRC.ipynb` | Main workflow: data → reclassification → index → CREDIT layer |
-| `extract_poverty.py` | Downloads the OPHI MPI poverty table and admin boundaries from HDX |
-| `extract_gdp.py` | Extracts and clips a country's GDP raster (boundary from geoBoundaries) |
-| `preprocess_kummu_gdp.py` | Downloads and pre-processes the Kummu v4 GDP dataset |
+| `CREDIT_layer.ipynb` | Main workflow: settings → data → reclassification → index → CREDIT layer |
+| `credit_utils.py` | All helper functions: country lookup, poverty (HDX/OPHI) and GDP (Kummu v4) downloads, raster processing, Step 3 options, CREDIT interpolation |
 | `credit_env.yml`, `requirements.txt` | Python environment |
 
 ---
