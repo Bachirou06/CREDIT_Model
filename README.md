@@ -86,13 +86,50 @@ All country-specific values are in the **Settings** cell at the top of the noteb
 
 Step 3 keeps both ways of combining the layers: **Option 1** works directly on raster arrays (`AHP_option_1.tif`, `clipped_sum_.tif`), and **Option 2** works on points / CSV and produces the final `CREDIT.tif`.
 
-### Repository contents
+### Folder structure
 
-| File | Purpose |
-|---|---|
-| `CREDIT_layer.ipynb` | Main workflow: settings → data → reclassification → index → CREDIT layer |
-| `credit_utils.py` | All helper functions: country lookup, poverty (HDX/OPHI) and GDP (Kummu v4) downloads, raster processing, Step 3 options, CREDIT interpolation |
-| `credit_env.yml`, `requirements.txt` | Python environment |
+The repository holds only the code. The data and result folders are created by the notebook on the first run and are not tracked in git. Files that belong to a country carry its ISO3 code or label (`COD`/`cod`/`DRC` below), so several countries can live side by side.
+
+```
+Credit_DRC/
+│
+├── CREDIT_layer.ipynb        Main workflow: settings → data → reclassification → index → CREDIT layer
+├── credit_utils.py           All helper functions (data downloads, raster processing, Step 3 options, CREDIT)
+├── README.md
+├── LICENSE
+├── credit_env.yml            Conda environment (recommended)
+├── requirements.txt          Exact package versions of the tested run (Python 3.12)
+├── images/                   Result maps shown in this README
+│
+│   ── created by the notebook (not in git) ──────────────────────────────
+│
+├── admin/                    Admin boundaries
+│   ├── COD_cod_admin_boundaries.shp.zip     HDX COD-AB download (all admin levels)
+│   ├── COD_cod_admin_boundaries/            unzipped; cod_admin1.shp is used
+│   └── COD_geoBoundaries_ADM1.shp           only if the geoBoundaries fallback was used
+│
+├── poverty_data/
+│   ├── tabular/              OPHI MPI table from HDX + cleaned copy (cod_poverty_data.csv)
+│   ├── shapefile/            Poverty joined to the admin units (DRC_admin1.shp)
+│   └── raster/               Rasterised poverty map (DRC_poverty_map.tif, ..._in_CRS.tif)
+│
+├── GDP_data/
+│   ├── rast_gdpTot_1990_2024_30arcsec.tif   Global Kummu v4 raster (1.4 GB; optional after clipping)
+│   └── GDP_2024_cod_clipped.tif             Country GDP for the chosen year (~20 MB)
+│
+├── tmp/
+│   └── COD/                  Intermediate files: pixel points, classified rasters, Option 2 CSVs
+│
+└── sample_output/
+    └── COD/                  Results for one country
+        ├── CREDIT.tif                      Final CREDIT layer (kWh/capita/year)
+        ├── AHP_option_1.tif                Combined index, Step 3 Option 1
+        ├── clipped_sum_.tif                Option 1 index clipped to the country
+        ├── AHP_result_option2.png          Map of the Option 2 index
+        └── Sample_result.png               Map of the CREDIT layer
+```
+
+Running another country adds its own files next to these (for example `admin/NER_...`, `GDP_data/GDP_2024_ner_clipped.tif`, `tmp/NER/`, `sample_output/NER/`) without touching the DRC ones.
 
 ---
 
