@@ -31,6 +31,7 @@ Data sources
 import difflib
 import math
 import os
+import time
 import unicodedata
 import zipfile
 from pathlib import Path
@@ -524,12 +525,15 @@ _VARIANT_FILES = {
 
 
 def download_file(url: str, out_dir: str, filename: str = None,
-                  chunk_size: int = 1 << 20, overwrite: bool = False) -> str:
+                  chunk_size: int = 1 << 20, overwrite: bool = False,
+                  max_retries: int = 20) -> str:
     """Stream-download a (large) file; skip if already on disk. Returns the local path.
 
     The data is written to '<file>.part' and only renamed to the final name once the
     full size has arrived, so an interrupted download is never mistaken for a complete
-    file (it is simply downloaded again on the next run).
+    file. If the connection drops, the download resumes from where it stopped (HTTP
+    Range request), retrying up to `max_retries` times. A '.part' file left by an
+    earlier run is resumed too, so re-running the cell continues the download.
     """
     if filename is None:
         filename = url.split("/")[-1].split("?")[0]
@@ -541,25 +545,62 @@ def download_file(url: str, out_dir: str, filename: str = None,
         return out_path
 
     os.makedirs(out_dir, exist_ok=True)
+    if overwrite and os.path.exists(part_path):
+        os.remove(part_path)
     print(f"Downloading {url}\n  -> {out_path}")
-    with requests.get(url, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        # content-length is the compressed size when the server gzips the response,
-        # so the size check is only possible for uncompressed downloads (e.g. Zenodo .tif)
-        total = 0 if r.headers.get("content-encoding") else int(r.headers.get("content-length", 0))
-        downloaded = 0
-        with open(part_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                if not chunk:
-                    continue
-                f.write(chunk)
-                downloaded += len(chunk)
-                if total:
-                    print(f"\r  {downloaded/1e6:,.0f} MB / {total/1e6:,.0f} MB "
-                          f"({downloaded / total * 100:5.1f}%)", end="", flush=True)
+
+    total = 0
+    attempt = 0
+    while True:
+        downloaded = os.path.getsize(part_path) if os.path.exists(part_path) else 0
+        if total and downloaded >= total:
+            break
+        # ask for the uncompressed bytes so sizes and byte offsets match the file on disk
+        headers = {"Accept-Encoding": "identity"}
+        if downloaded:
+            headers["Range"] = f"bytes={downloaded}-"
+        try:
+            with requests.get(url, stream=True, timeout=60, headers=headers) as r:
+                if r.status_code == 416:  # range starts at/after the end: already complete
+                    break
+                r.raise_for_status()
+                if downloaded and r.status_code != 206:
+                    # server ignored the Range header: start again from zero
+                    print("\n  Server does not support resuming; restarting from 0.")
+                    downloaded = 0
+                if r.headers.get("content-encoding") in (None, "identity"):
+                    remaining = int(r.headers.get("content-length", 0))
+                    total = downloaded + remaining if remaining else 0
+                if downloaded:
+                    print(f"  Resuming at {downloaded/1e6:,.0f} MB")
+                with open(part_path, "ab" if downloaded else "wb") as f:
+                    for chunk in r.iter_content(chunk_size=chunk_size):
+                        if not chunk:
+                            continue
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total:
+                            print(f"\r  {downloaded/1e6:,.0f} MB / {total/1e6:,.0f} MB "
+                                  f"({downloaded / total * 100:5.1f}%)", end="", flush=True)
+            if not total or downloaded >= total:
+                break
+            raise requests.exceptions.ChunkedEncodingError("connection closed early")
+        except (requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout) as e:
+            attempt += 1
+            if attempt > max_retries:
+                raise IOError(f"Download failed after {max_retries} retries ({e}). "
+                              f"Run the cell again to resume from the .part file.") from e
+            wait = min(60, 2 ** attempt)
+            print(f"\n  Connection lost ({type(e).__name__}); retry {attempt}/{max_retries} "
+                  f"in {wait}s...")
+            time.sleep(wait)
+
+    downloaded = os.path.getsize(part_path)
     if total and downloaded != total:
         raise IOError(f"Download incomplete ({downloaded:,} of {total:,} bytes). "
-                      f"Run the cell again to restart the download.")
+                      f"Run the cell again to resume the download.")
     os.replace(part_path, out_path)
     print("\nDownload complete.")
     return out_path
