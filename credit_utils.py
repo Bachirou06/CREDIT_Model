@@ -805,7 +805,9 @@ def raster_to_point_shp(rasterfn, outSHPfn, band_no=1):
                 point.AddPoint(x, y)
                 outFeature = ogr.Feature(featureDefn)
                 outFeature.SetGeometry(point)
-                outFeature.SetField("VALUE", float(value))
+                # Cast explicitly: VALUE is an integer field, so passing a float
+                # makes GDAL emit a "Lossy conversion" warning for every point.
+                outFeature.SetField("VALUE", int(value))
                 outLayer.CreateFeature(outFeature)
                 outFeature.Destroy()
     outDataSource = None  # flush to disk
