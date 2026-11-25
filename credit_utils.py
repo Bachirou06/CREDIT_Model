@@ -73,6 +73,8 @@ COUNTRY_ALIASES = {
     "cape verde": "cabo verde",
     "swaziland": "eswatini",
     "drc": "congo, the democratic republic of the",
+    "congo, democratic republic of the": "congo, the democratic republic of the",
+    "democratic republic of the congo": "congo, the democratic republic of the",
     "congo-kinshasa": "congo, the democratic republic of the",
     "congo-brazzaville": "congo",
 }
@@ -118,7 +120,8 @@ def normalize_country(country: str) -> str:
 def resolve_iso3(country: str) -> str:
     """Country name ('Niger', 'DRC') or ISO3 code ('COD') -> upper-case ISO3 code."""
     country = country.strip()
-    if len(country) == 3 and country.isalpha() and country.isupper():
+    is_code_like = len(country) == 3 and country.isalpha() and country.isupper()
+    if is_code_like and (not HAS_PYCOUNTRY or pycountry.countries.get(alpha_3=country)):
         return country
     match = _lookup_country(country)
     if match is None:
@@ -205,11 +208,20 @@ def get_dataset_resources(dataset_slug: str) -> list:
 
 
 def get_country_mpi_resources(country: str) -> list:
-    """Find the country's HDX MPI dataset (tries the official name, then the raw input)."""
+    """Find the country's HDX MPI dataset.
+
+    HDX now names these datasets by ISO3 code ('cod-mpi', 'ben-mpi'), so that is
+    tried first; the older name-based slugs are kept as a fallback.
+    """
     official_name = normalize_country(country)
+    slugs = []
+    try:
+        slugs.append(f"{resolve_iso3(country).lower()}-mpi")
+    except ValueError:
+        pass
+    slugs += [country_dataset_slug(v) for v in (official_name, country.strip())]
     tried = []
-    for name_variant in dict.fromkeys([official_name, country.strip()]):
-        slug = country_dataset_slug(name_variant)
+    for slug in dict.fromkeys(slugs):
         tried.append(slug)
         try:
             return get_dataset_resources(slug)

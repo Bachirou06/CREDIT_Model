@@ -15,12 +15,14 @@ The model produces a ~1 km grid of residential demand targets for the whole coun
 | ![DRC AHP index](images/DRC_AHP_index.png) | ![DRC CREDIT result](images/DRC_CREDIT_result.png) |
 
 - **Highest targets** are around **Kinshasa**: ~300 kWh/capita/year on average, up to ~590 kWh/capita/year (MTF Tier 5) in the city centre.
-- **Mid-range targets** (~150–300 kWh/capita/year) appear in Kongo Central and the south-eastern mining belt (Haut-Katanga). Both provinces average ~140–146 kWh/capita/year.
-- **The east** (Ituri, Nord-Kivu, Sud-Kivu, Haut-Uele and Bas-Uele) sits at ~65–80 kWh/capita/year.
-- **Lowest targets** (below ~10 kWh/capita/year) are in the poorest provinces: Kwilu, Kwango, Kasaï, Kasaï-Central, Sankuru, Maniema, Mongala, Tshuapa and Nord-Ubangi.
-- About **87 %** of populated pixels are below 153 kWh/capita/year (MTF Tier 1–2). The national mean is ~66 kWh/capita/year.
+- **Haut-Katanga** (the south-eastern mining belt) is the only other province with mid-range targets: ~147 kWh/capita/year on average, up to ~370 kWh/capita/year.
+- **Most other provinces** average ~65–80 kWh/capita/year: Kongo Central, Kwilu, Équateur, Tshopo, Lomami, Lualaba, Tanganyika, Kasaï-Oriental, Haut-Uele, Nord-Kivu and Sud-Kivu.
+- **Lowest targets** (below ~10 kWh/capita/year on average) are in the 13 provinces where more than 80 % of people are MPI-poor: Kwango, Maï-Ndombe, Kasaï, Kasaï-Central, Sankuru, Maniema, Haut-Lomami, Ituri, Bas-Uele, Mongala, Tshuapa, Sud-Ubangi and Nord-Ubangi.
+- About **91 %** of populated pixels are below 153 kWh/capita/year (MTF Tier 1–2). The national mean is ~53 kWh/capita/year.
 
-> These results use the PCode join between the poverty table and the HDX boundaries. Earlier versions had no poverty data for Haut-Uele, Bas-Uele, Nord-Kivu, Sud-Kivu and Kasaï-Central (English and French province names did not match). Those provinces were treated as the least poor, which put their targets at ~140–150 kWh/capita/year.
+> These results use the OPHI MPI from the **DHS 2023–24** survey (HDX dataset `cod-mpi`). Earlier versions of this README used the MICS 2017–18 survey. With the newer survey, Kwilu falls below the 80 % poverty threshold (its targets rise from below 10 to ~70 kWh/capita/year), while Ituri, Haut-Lomami, Maï-Ndombe, Bas-Uele and Sud-Ubangi rise above it (their targets drop to below 10). Kongo Central falls from ~140 to ~70 kWh/capita/year.
+>
+> Poverty is joined to the HDX boundaries by PCode, so every province gets its own value. Versions before the PCode join had no poverty data for Haut-Uele, Bas-Uele, Nord-Kivu, Sud-Kivu and Kasaï-Central, because the English and French province names did not match.
 
 Output files (written to `sample_output/<ISO3>/`, e.g. `sample_output/COD/`, not tracked in git; each country gets its own folder, so running another country does not overwrite these):
 
@@ -166,7 +168,7 @@ index = 0.5 × poverty_class + 0.5 × GDP_class
 | Parameter | Value |
 |---|---|
 | Country / ISO3 | Democratic Republic of the Congo / COD |
-| Poverty data | OPHI MPI headcount ratio, ADM1 (26 provinces; MPI is only published at ADM1) |
+| Poverty data | OPHI MPI headcount ratio from DHS 2023–24, ADM1 (26 provinces; MPI is only published at ADM1) |
 | GDP data | Kummu et al. v4, GDP PPP 2024, 30 arc-sec |
 | Projection | WGS 84 / UTM zone 34S (EPSG:32734) |
 | Weights | poverty 0.5, GDP 0.5 |
