@@ -19,6 +19,7 @@ dependencies:
   - xarray
   - rioxarray
   - requests
+  - pycountry  # country name -> ISO3 (HDX 'cod-mpi' slugs, geoBoundaries)
   - jupyterlab
   - setuptools<81  # earthpy 0.9.4 still imports pkg_resources
   - pip

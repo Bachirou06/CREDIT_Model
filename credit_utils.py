@@ -29,6 +29,7 @@ Data sources
 """
 
 import difflib
+import io
 import math
 import os
 import time
@@ -147,7 +148,11 @@ def get_country_boundary(iso3: str, adm_level: str = "ADM0") -> gpd.GeoDataFrame
 
     api_url = f"https://www.geoboundaries.org/api/current/gbOpen/{iso3}/{adm_level}/"
     meta = requests.get(api_url, timeout=30).json()
-    gdf = gpd.read_file(meta["gjDownloadURL"])
+    # Download with requests rather than gpd.read_file(url): geopandas fetches
+    # URLs with urllib, whose default User-Agent geoboundaries.org rejects (403).
+    resp = requests.get(meta["gjDownloadURL"], timeout=120)
+    resp.raise_for_status()
+    gdf = gpd.read_file(io.BytesIO(resp.content))
     print(f"Loaded {iso3} {adm_level} boundary: {len(gdf)} feature(s), CRS={gdf.crs}")
     _boundary_cache[cache_key] = gdf
     return gdf
